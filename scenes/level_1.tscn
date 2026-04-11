@@ -1,0 +1,166 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script"   path="res://scripts/level_1.gd"                                                              id="1_level"]
+[ext_resource type="Script"   path="res://scripts/player.gd"                                                               id="2_player"]
+[ext_resource type="Texture2D" path="res://asset/charectors/hermit_sheet.png"                                               id="3_hermit"]
+
+[sub_resource type="RectangleShape2D" id="PlayerShape"]
+size = Vector2(72, 64)
+
+[sub_resource type="RectangleShape2D" id="KillZoneShape"]
+size = Vector2(2816, 64)
+
+; ═══════════════════════════════════════════════════════════════════════════════
+;  Root
+; ═══════════════════════════════════════════════════════════════════════════════
+[node name="Level1" type="Node2D"]
+script = ExtResource("1_level")
+
+; ─── Parallax background ─────────────────────────────────────────────────────
+[node name="ParallaxBackground" type="ParallaxBackground" parent="."]
+
+; Layer 0 – static night sky
+[node name="SkyLayer" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.0, 0.0)
+
+[node name="Sky" type="ColorRect" parent="ParallaxBackground/SkyLayer"]
+position = Vector2(-512, -512)
+size = Vector2(5120, 3072)
+color = Color(0.04, 0.03, 0.09, 1)
+
+[node name="MoonGlow" type="ColorRect" parent="ParallaxBackground/SkyLayer"]
+position = Vector2(1760, 80)
+size = Vector2(120, 120)
+color = Color(0.9, 0.85, 0.6, 0.12)
+
+[node name="Moon" type="ColorRect" parent="ParallaxBackground/SkyLayer"]
+position = Vector2(1780, 100)
+size = Vector2(80, 80)
+color = Color(0.95, 0.92, 0.78, 0.85)
+
+; Layer 1 – distant mountains (very slow scroll)
+[node name="FarMountainsLayer" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.08, 0.0)
+motion_mirroring = Vector2(2560, 0)
+
+[node name="FarMountains" type="Polygon2D" parent="ParallaxBackground/FarMountainsLayer"]
+color = Color(0.09, 0.07, 0.18, 1)
+polygon = PackedVector2Array(
+	0, 900,
+	200, 650,
+	380, 720,
+	520, 580,
+	680, 650,
+	820, 500,
+	1000, 620,
+	1150, 530,
+	1350, 650,
+	1500, 550,
+	1680, 610,
+	1820, 480,
+	2000, 580,
+	2200, 520,
+	2400, 640,
+	2560, 560,
+	2560, 900
+)
+
+; Layer 2 – mid-ground tree silhouettes
+[node name="TreesLayer" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.25, 0.0)
+motion_mirroring = Vector2(2560, 0)
+
+[node name="Trees" type="Polygon2D" parent="ParallaxBackground/TreesLayer"]
+color = Color(0.06, 0.05, 0.13, 1)
+polygon = PackedVector2Array(
+	0, 900,
+	80, 820,
+	120, 750,
+	160, 820,
+	240, 800,
+	280, 730,
+	320, 800,
+	400, 810,
+	440, 740,
+	500, 810,
+	560, 790,
+	600, 710,
+	640, 790,
+	720, 800,
+	760, 720,
+	820, 800,
+	880, 810,
+	920, 740,
+	980, 810,
+	1060, 800,
+	1100, 730,
+	1140, 800,
+	1240, 810,
+	1280, 740,
+	1340, 810,
+	1400, 790,
+	1460, 720,
+	1520, 790,
+	1580, 810,
+	1640, 750,
+	1700, 810,
+	1780, 800,
+	1840, 720,
+	1900, 800,
+	1980, 790,
+	2040, 730,
+	2100, 800,
+	2200, 810,
+	2240, 740,
+	2320, 810,
+	2400, 800,
+	2460, 730,
+	2560, 800,
+	2560, 900
+)
+
+; Layer 3 – near-ground fog strip
+[node name="FogLayer" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.6, 0.0)
+
+[node name="Fog" type="ColorRect" parent="ParallaxBackground/FogLayer"]
+position = Vector2(-512, 870)
+size = Vector2(5120, 80)
+color = Color(0.12, 0.08, 0.22, 0.35)
+
+; ─── Kill zone ────────────────────────────────────────────────────────────────
+[node name="KillZone" type="Area2D" parent="."]
+position = Vector2(1408, 1728)
+
+[node name="KillShape" type="CollisionShape2D" parent="KillZone"]
+shape = SubResource("KillZoneShape")
+
+; ─── Player ──────────────────────────────────────────────────────────────────
+[node name="Player" type="CharacterBody2D" parent="."]
+position = Vector2(192, 870)
+script = ExtResource("2_player")
+
+; Hermit-crab sprite sheet: 4 walk frames, each 120×108 px
+[node name="Sprite2D" type="Sprite2D" parent="Player"]
+texture  = ExtResource("3_hermit")
+hframes  = 4
+vframes  = 1
+frame    = 0
+; Offset so the sprite's bottom aligns with the collision box bottom
+offset   = Vector2(0, -22)
+scale    = Vector2(0.9, 0.9)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
+shape = SubResource("PlayerShape")
+
+; Camera – smooth follow, fixed vertical, world limits
+[node name="Camera2D" type="Camera2D" parent="Player"]
+zoom = Vector2(0.85, 0.85)
+position_smoothing_enabled = true
+position_smoothing_speed   = 5.0
+drag_horizontal_enabled    = true
+drag_vertical_enabled      = false
+limit_left   = 0
+limit_top    = -256
+limit_right  = 2816
+limit_bottom = 1700
