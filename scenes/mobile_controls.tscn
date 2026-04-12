@@ -1,0 +1,74 @@
+[gd_scene load_steps=5 format=3 uid="uid://ql5s5dasaxm6"]
+
+[ext_resource type="Script" path="res://scripts/mobile_controls.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="JoystickBaseStyle"]
+bg_color = Color(0.2, 0.2, 0.2, 0.5)
+corner_radius_top_left = 50
+corner_radius_top_right = 50
+corner_radius_bottom_right = 50
+corner_radius_bottom_left = 50
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6, 0.6, 0.6, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="JoystickHandleStyle"]
+bg_color = Color(0.4, 0.4, 0.4, 0.8)
+corner_radius_top_left = 25
+corner_radius_top_right = 25
+corner_radius_bottom_right = 25
+corner_radius_bottom_left = 25
+
+[sub_resource type="StyleBoxFlat" id="JumpButtonStyle"]
+bg_color = Color(0.3, 0.5, 0.8, 0.7)
+corner_radius_top_left = 50
+corner_radius_top_right = 50
+corner_radius_bottom_right = 50
+corner_radius_bottom_left = 50
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5, 0.7, 0.9, 0.9)
+
+[node name="MobileControls" type="CanvasLayer"]
+layer = 10
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_left = 0.0
+anchors_top = 0.0
+anchors_right = 1.0
+anchors_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="JoystickBase" type="Panel" parent="Control"]
+layout_mode = 0
+position = Vector2(460, 480)
+size = Vector2(100, 100)
+custom_minimum_size = Vector2(100, 100)
+theme_overrides_styles/panel = SubResource("JoystickBaseStyle")
+mouse_filter = 2
+
+[node name="JoystickHandle" type="Panel" parent="Control/JoystickBase"]
+layout_mode = 2
+offset_left = 25.0
+offset_top = 25.0
+offset_right = 75.0
+offset_bottom = 75.0
+custom_minimum_size = Vector2(50, 50)
+theme_overrides_styles/panel = SubResource("JoystickHandleStyle")
+mouse_filter = 2
+
+[node name="JumpButton" type="Button" parent="Control"]
+layout_mode = 0
+position = Vector2(20, 480)
+size = Vector2(100, 100)
+custom_minimum_size = Vector2(100, 100)
+theme_overrides_styles/normal = SubResource("JumpButtonStyle")
+theme_overrides_font_sizes/font_size = 24
+text = "JUMP"
+mouse_filter = 2

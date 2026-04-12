@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://coux76717j6fl" path="res://scripts/level_1.gd" id="1_level"]
 [ext_resource type="Script" uid="uid://ke32ci3q6lqt" path="res://scripts/player.gd" id="2_player"]
 [ext_resource type="Texture2D" uid="uid://csrg3beybd6vb" path="res://asset/charectors/hermit_sheet.png" id="3_hermit"]
+[ext_resource type="PackedScene" uid="uid://ql5s5c9r9xm6" path="res://scenes/mobile_controls.tscn" id="4_mobile"]
 
 [sub_resource type="RectangleShape2D" id="KillZoneShape"]
 size = Vector2(7680, 116)
@@ -186,3 +187,5 @@ limit_top = -700
 limit_right = 7680
 limit_bottom = 200
 position_smoothing_enabled = true
+
+[node name="MobileControls" parent="." instance=ExtResource("4_mobile")]
