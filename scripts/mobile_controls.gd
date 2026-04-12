@@ -77,7 +77,11 @@ func _on_touch_released(touch_id: int) -> void:
 	# Reset joystick
 	if _joystick_touch_id == touch_id:
 		_joystick_touch_id = -1
-		joystick_handle.position = Vector2.ZERO
+		# Center the handle (offset by half the difference in sizes)
+		joystick_handle.position = Vector2(
+			(joystick_base_size - joystick_handle_size) / 2,
+			(joystick_base_size - joystick_handle_size) / 2
+		)
 		Input.action_release("ui_left")
 		Input.action_release("ui_right")
 
