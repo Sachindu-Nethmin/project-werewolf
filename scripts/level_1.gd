@@ -74,8 +74,8 @@ func _ready() -> void:
 
 
 var _spawn_points := [
-	Vector2(192, -80), Vector2(512, -80), Vector2(832, -80), Vector2(1152, -80),
-	Vector2(192, -200), Vector2(512, -200), Vector2(832, -200), Vector2(1152, -200)
+	Vector2(192, -100), Vector2(512, -100), Vector2(832, -100), Vector2(1152, -100),
+	Vector2(192, -180), Vector2(512, -180), Vector2(832, -180), Vector2(1152, -180)
 ]
 var _spawn_index := 0
 
