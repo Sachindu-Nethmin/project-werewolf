@@ -93,8 +93,8 @@ func _remove_player(id: int) -> void:
 
 func _spawn_all_peers() -> void:
 	# Client spawns players for all connected peers
-	var all_peers = [1] + multiplayer.get_peers()
-	for id in all_peers:
+	_add_player(1)  # Server
+	for id in multiplayer.get_peers():
 		if not has_node(str(id)):
 			_add_player(id)
 
