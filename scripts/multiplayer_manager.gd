@@ -79,6 +79,8 @@ func _handle_signal_message(msg: Dictionary) -> void:
 		"peer_id":
 			var my_id = msg.get("id", 0)
 			print("Assigned peer ID: ", my_id)
+			_state = State.GAME_READY
+			connected_to_game.emit()
 
 		"new_peer":
 			var peer_id = msg.get("id", 0)
