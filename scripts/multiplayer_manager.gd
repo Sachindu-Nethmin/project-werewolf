@@ -55,7 +55,8 @@ func _process_messages() -> void:
 		if data == null:
 			continue
 
-		var msg = JSON.parse_string(data.get_string_from_utf8())
+		var json_str = data if data is String else data.get_string_from_utf8()
+		var msg = JSON.parse_string(json_str)
 		if msg == null:
 			continue
 
