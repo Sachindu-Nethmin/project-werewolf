@@ -56,6 +56,20 @@ func _ready() -> void:
 	kill_zone.body_entered.connect(_on_kill_zone_body_entered)
 
 	_build_level()
+	_display_room_code()
+
+	# Multiplayer spawning logic
+	if multiplayer.is_server():
+		multiplayer.peer_connected.connect(_add_player)
+		multiplayer.peer_disconnected.connect(_remove_player)
+
+		for id in multiplayer.get_peers():
+			_add_player(id)
+
+		_add_player(1)
+	else:
+		await get_tree().create_timer(0.1).timeout
+		_spawn_all_peers()
 
 
 # ─── Level builder ────────────────────────────────────────────────────────────
@@ -89,6 +103,57 @@ func _spawn_tile(col: int, row: int, tile_type: int) -> void:
 	add_child(body)
 
 
+var _spawn_points := [
+	Vector2(192, -80), Vector2(512, -80), Vector2(832, -80), Vector2(1152, -80),
+	Vector2(192, -200), Vector2(512, -200), Vector2(832, -200), Vector2(1152, -200)
+]
+var _spawn_index := 0
+
+
+func _add_player(id: int) -> void:
+	print("Spawning player for: ", id)
+	var player = preload("res://scenes/player.tscn").instantiate()
+	player.name = str(id)
+	player.position = _spawn_points[_spawn_index % _spawn_points.size()]
+	_spawn_index += 1
+	add_child(player)
+	player.set_multiplayer_authority(id)
+
+
+func _remove_player(id: int) -> void:
+	if has_node(str(id)):
+		get_node(str(id)).queue_free()
+
+
+func _spawn_all_peers() -> void:
+	_add_player(1)
+	for id in multiplayer.get_peers():
+		if not has_node(str(id)):
+			_add_player(id)
+
+
 func _on_kill_zone_body_entered(body: Node2D) -> void:
+	if not multiplayer.is_server():
+		return
 	if body.has_method("respawn"):
 		body.respawn()
+
+
+func _display_room_code() -> void:
+	var room_code = MultiplayerManager.room_code
+	if room_code.is_empty():
+		return
+
+	var ui_layer = CanvasLayer.new()
+	ui_layer.layer = 100
+	add_child(ui_layer)
+
+	var label = Label.new()
+	label.text = "Room: " + room_code
+	label.anchor_left = 0
+	label.anchor_top = 0
+	label.offset_left = 20
+	label.offset_top = 20
+	label.add_theme_font_size_override("font_size", 24)
+	label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.85, 1))
+	ui_layer.add_child(label)

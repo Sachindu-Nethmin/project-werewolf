@@ -1,6 +1,5 @@
 extends Control
 
-# Base sizes matching the .tscn authored values
 const BASE_TITLE_HALF_W: float = 300.0
 const BASE_TITLE_BAR_H: float = 6.0
 const BASE_VBOX_HALF_W: float = 140.0
@@ -8,7 +7,6 @@ const BASE_BUTTON_W: float = 280.0
 const BASE_BUTTON_H: float = 56.0
 const BASE_VBOX_SEP: float = 18.0
 
-# Base font sizes from .tscn
 const BASE_FONT_TITLE: int = 52
 const BASE_FONT_SUBTITLE: int = 18
 const BASE_FONT_MODE: int = 14
@@ -31,6 +29,8 @@ const BASE_FONT_VERSION: int = 12
 @onready var quit_button: Button = $VBox/QuitButton
 @onready var version_label: Label = $VersionLabel
 
+var _selected_mode: String = ""
+
 
 func _ready() -> void:
 	day_button.pressed.connect(_on_day_pressed)
@@ -47,6 +47,8 @@ func _ready() -> void:
 	ResponsiveUI.scale_changed.connect(_apply_layout)
 	_apply_layout(ResponsiveUI.scale_factor)
 
+	_update_ui_state()
+
 
 func _apply_layout(sf: float) -> void:
 	var half_title_w: float = BASE_TITLE_HALF_W * sf
@@ -55,27 +57,22 @@ func _apply_layout(sf: float) -> void:
 	var button_h: float = BASE_BUTTON_H * sf
 	var title_bar_h: float = BASE_TITLE_BAR_H * sf
 
-	# TitleContainer: re-apply offsets to maintain centered anchor
 	title_container.offset_left = -half_title_w
 	title_container.offset_right = half_title_w
 
-	# Title bars width
 	title_bar.custom_minimum_size = Vector2(half_title_w * 2.0, title_bar_h)
 	title_bar_bot.custom_minimum_size = Vector2(half_title_w * 2.0, title_bar_h)
 
-	# VBox: re-apply offsets
 	vbox.offset_left = -half_vbox_w
 	vbox.offset_right = half_vbox_w
 	vbox.add_theme_constant_override("separation", int(BASE_VBOX_SEP * sf))
 
-	# Button sizes
 	for btn in [day_button, night_button, host_button, join_button, quit_button]:
 		btn.custom_minimum_size = Vector2(button_w, button_h)
 
 	room_code_input.custom_minimum_size = Vector2(button_w, button_h * 0.7)
 	status_label.custom_minimum_size = Vector2(button_w, button_h * 0.5)
 
-	# Font sizes
 	title_label.add_theme_font_size_override("font_size", int(BASE_FONT_TITLE * sf))
 	subtitle_label.add_theme_font_size_override("font_size", int(BASE_FONT_SUBTITLE * sf))
 	mode_label.add_theme_font_size_override("font_size", int(BASE_FONT_MODE * sf))
@@ -86,15 +83,38 @@ func _apply_layout(sf: float) -> void:
 	version_label.add_theme_font_size_override("font_size", int(BASE_FONT_VERSION * sf))
 
 
+func _update_ui_state() -> void:
+	if _selected_mode.is_empty():
+		mode_label.text = "SELECT MODE"
+		day_button.visible = true
+		night_button.visible = true
+		host_button.visible = false
+		join_button.visible = false
+		room_code_input.visible = false
+		status_label.visible = false
+	else:
+		mode_label.text = "SELECT GAME MODE (" + _selected_mode.to_upper() + ")"
+		day_button.visible = false
+		night_button.visible = false
+		host_button.visible = true
+		join_button.visible = true
+		room_code_input.visible = true
+		status_label.visible = true
+
+
 func _on_day_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/level_2.tscn")
+	_selected_mode = "day"
+	_update_ui_state()
 
 
 func _on_night_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/level_1.tscn")
+	_selected_mode = "night"
+	_update_ui_state()
 
 
 func _on_host_pressed() -> void:
+	if _selected_mode.is_empty():
+		return
 	host_button.disabled = true
 	join_button.disabled = true
 	status_label.text = "Creating room..."
@@ -102,8 +122,9 @@ func _on_host_pressed() -> void:
 
 
 func _on_join_pressed() -> void:
-	var code := room_code_input.text.strip_edges().to_upper()
-	_attempt_join(code)
+	room_code_input.grab_focus()
+	room_code_input.placeholder_text = "Enter room code and press Enter"
+	status_label.text = ""
 
 
 func _on_room_code_submitted(new_text: String) -> void:
@@ -124,13 +145,14 @@ func _attempt_join(code: String) -> void:
 
 
 func _on_room_code_ready(code: String) -> void:
+	MultiplayerManager.room_code = code
 	status_label.text = "Room: " + code + " - Waiting for players..."
-	room_code_input.visible = false
 	print("Host room created with code: ", code)
 
 
 func _on_connected_to_game() -> void:
-	get_tree().change_scene_to_file("res://scenes/level_1.tscn")
+	var scene_path = "res://scenes/level_2.tscn" if _selected_mode == "day" else "res://scenes/level_1.tscn"
+	get_tree().change_scene_to_file(scene_path)
 
 
 func _on_connection_failed(reason: String) -> void:

@@ -25,6 +25,12 @@ var _room_code: String = ""
 var _rtc_peers: Dictionary = {}  # peer_id -> WebRTCPeerConnection
 var _pending_ice: Dictionary = {}  # peer_id -> [candidates]
 
+var room_code: String:
+	get:
+		return _room_code
+	set(value):
+		_room_code = value
+
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)

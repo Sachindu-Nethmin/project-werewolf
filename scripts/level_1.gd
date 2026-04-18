@@ -56,6 +56,7 @@ func _ready() -> void:
 	kill_zone.body_entered.connect(_on_kill_zone_body_entered)
 
 	_build_level()
+	_display_room_code()
 
 	# Multiplayer spawning logic
 	if multiplayer.is_server():
@@ -72,7 +73,10 @@ func _ready() -> void:
 		_spawn_all_peers()
 
 
-var _spawn_points := [Vector2(192, -80), Vector2(512, -80), Vector2(832, -80), Vector2(1152, -80)]
+var _spawn_points := [
+	Vector2(192, -80), Vector2(512, -80), Vector2(832, -80), Vector2(1152, -80),
+	Vector2(192, -200), Vector2(512, -200), Vector2(832, -200), Vector2(1152, -200)
+]
 var _spawn_index := 0
 
 
@@ -135,3 +139,23 @@ func _on_kill_zone_body_entered(body: Node2D) -> void:
 		return
 	if body.has_method("respawn"):
 		body.respawn()
+
+
+func _display_room_code() -> void:
+	var room_code = MultiplayerManager.room_code
+	if room_code.is_empty():
+		return
+
+	var ui_layer = CanvasLayer.new()
+	ui_layer.layer = 100
+	add_child(ui_layer)
+
+	var label = Label.new()
+	label.text = "Room: " + room_code
+	label.anchor_left = 0
+	label.anchor_top = 0
+	label.offset_left = 20
+	label.offset_top = 20
+	label.add_theme_font_size_override("font_size", 24)
+	label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.85, 1))
+	ui_layer.add_child(label)
