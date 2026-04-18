@@ -139,14 +139,16 @@ func _on_room_code_submitted(new_text: String) -> void:
 
 
 func _attempt_join(code: String) -> void:
-	if code.length() < 4:
-		status_label.text = "Room code too short"
+	if code.length() != 6:
+		status_label.text = "Room code must be 6 characters"
 		return
 	if host_button.disabled:
 		return
 	host_button.disabled = true
 	join_button.disabled = true
+	room_code_input.editable = false
 	status_label.text = "Connecting to " + code + "..."
+	print("Attempting to join room: ", code)
 	MultiplayerManager.join_game(code)
 
 
@@ -162,14 +164,16 @@ func _on_connected_to_game() -> void:
 
 
 func _on_connection_failed(reason: String) -> void:
-	status_label.text = "Error: " + reason
 	print("Connection failed: ", reason)
-	# Re-enable buttons after a short delay so user can try again
-	await get_tree().create_timer(1.0).timeout
-	if not host_button.disabled:
-		return
+	status_label.text = "Error: " + reason
+	# Re-enable for retry
 	host_button.disabled = false
 	join_button.disabled = false
+	room_code_input.editable = true
+
+	# If joining, show retry message
+	if room_code_input.visible:
+		status_label.text = "Failed: " + reason + " (Check room code and try again)"
 
 
 func _on_quit_pressed() -> void:

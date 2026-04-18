@@ -195,6 +195,10 @@ func host_game() -> void:
 
 func join_game(room_code: String) -> void:
 	print("Joining game: ", room_code)
+	if room_code.length() != 6 or room_code == "":
+		connection_failed.emit("Invalid room code format")
+		return
+
 	_is_host = false
 	_room_code = room_code
 
