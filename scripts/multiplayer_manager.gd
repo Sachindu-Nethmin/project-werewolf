@@ -15,7 +15,7 @@ enum State {
 }
 
 const STUN_SERVER = "stun:stun.l.google.com:19302"
-var signaling_server_url := "wss://project-werewolf-signaling.fly.dev:443"
+var signaling_server_url := "wss://old-dawn-1161.fly.dev"
 
 var peer: WebRTCMultiplayerPeer = WebRTCMultiplayerPeer.new()
 var _ws: WebSocketPeer = null
