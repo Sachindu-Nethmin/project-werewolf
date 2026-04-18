@@ -117,14 +117,20 @@ func _on_host_pressed() -> void:
 		return
 	host_button.disabled = true
 	join_button.disabled = true
+	room_code_input.visible = false
 	status_label.text = "Creating room..."
 	MultiplayerManager.host_game()
+	# Immediately transition to game after hosting
+	await get_tree().create_timer(0.5).timeout
+	_on_connected_to_game()
 
 
 func _on_join_pressed() -> void:
+	room_code_input.visible = true
 	room_code_input.grab_focus()
+	room_code_input.clear()
 	room_code_input.placeholder_text = "Enter room code and press Enter"
-	status_label.text = ""
+	status_label.text = "Waiting for room code..."
 
 
 func _on_room_code_submitted(new_text: String) -> void:
