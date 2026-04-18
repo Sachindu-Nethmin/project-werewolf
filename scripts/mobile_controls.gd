@@ -1,9 +1,10 @@
 extends Control
 
-@export var joystick_base_size: float = 100.0
-@export var joystick_handle_size: float = 50.0
-@export var button_size: float = 100.0
-@export var padding: float = 20.0
+const BASE_JOYSTICK: float = 100.0
+const BASE_HANDLE: float = 50.0
+const BASE_BUTTON: float = 100.0
+const BASE_PADDING: float = 20.0
+const BASE_FONT: int = 24
 
 @onready var joystick_base = $JoystickBase
 @onready var joystick_handle = $JoystickBase/JoystickHandle
@@ -17,23 +18,54 @@ var _mouse_pressed := false
 
 
 func _ready() -> void:
-	# Position controls relative to viewport
-	var viewport_size = get_viewport_rect().size
+	ResponsiveUI.scale_changed.connect(_apply_layout)
+	resized.connect(func(): _apply_layout(ResponsiveUI.scale_factor))
+	_apply_layout(ResponsiveUI.scale_factor)
 
-	# Joystick: bottom-right corner
-	joystick_base.position = Vector2(
-		viewport_size.x - joystick_base_size - padding,
-		viewport_size.y - joystick_base_size - padding
-	)
 
-	# Jump button: bottom-left corner
-	jump_button.position = Vector2(
-		padding,
-		viewport_size.y - button_size - padding
-	)
+func _apply_layout(sf: float) -> void:
+	var jp := BASE_JOYSTICK * sf
+	var hp := BASE_HANDLE * sf
+	var bp := BASE_BUTTON * sf
+	var pp := BASE_PADDING * sf
+	var vp := get_viewport_rect().size
 
-	_joystick_center = joystick_base.global_position + joystick_base.size / 2
-	_joystick_max_distance = joystick_base_size / 2
+	# Size and position joystick base (bottom-right)
+	joystick_base.size = Vector2(jp, jp)
+	joystick_base.custom_minimum_size = Vector2(jp, jp)
+	joystick_base.position = Vector2(vp.x - jp - pp, vp.y - jp - pp)
+
+	# Size and position joystick handle (centered inside base)
+	joystick_handle.size = Vector2(hp, hp)
+	joystick_handle.custom_minimum_size = Vector2(hp, hp)
+	joystick_handle.position = Vector2((jp - hp) / 2.0, (jp - hp) / 2.0)
+
+	# Size and position jump button (bottom-left)
+	jump_button.size = Vector2(bp, bp)
+	jump_button.custom_minimum_size = Vector2(bp, bp)
+	jump_button.position = Vector2(pp, vp.y - bp - pp)
+	jump_button.add_theme_font_size_override("font_size", int(BASE_FONT * sf))
+
+	# Update joystick interaction state
+	_joystick_center = joystick_base.global_position + joystick_base.size / 2.0
+	_joystick_max_distance = jp / 2.0
+
+	# Update corner radii on style boxes
+	_apply_corner_radius(joystick_base, "panel", int(jp / 2.0))
+	_apply_corner_radius(joystick_handle, "panel", int(hp / 2.0))
+	_apply_corner_radius(jump_button, "normal", int(bp / 2.0))
+
+
+func _apply_corner_radius(node: Control, slot: StringName, r: int) -> void:
+	var sb = node.get_theme_stylebox(slot)
+	if not sb:
+		return
+	sb = sb.duplicate()
+	sb.corner_radius_top_left = r
+	sb.corner_radius_top_right = r
+	sb.corner_radius_bottom_left = r
+	sb.corner_radius_bottom_right = r
+	node.add_theme_stylebox_override(slot, sb)
 
 
 func _input(event: InputEvent) -> void:
@@ -77,10 +109,10 @@ func _on_touch_released(touch_id: int) -> void:
 	# Reset joystick
 	if _joystick_touch_id == touch_id:
 		_joystick_touch_id = -1
-		# Center the handle (offset by half the difference in sizes)
+		# Center the handle
 		joystick_handle.position = Vector2(
-			(joystick_base_size - joystick_handle_size) / 2,
-			(joystick_base_size - joystick_handle_size) / 2
+			(joystick_base.size.x - joystick_handle.size.x) / 2.0,
+			(joystick_base.size.y - joystick_handle.size.y) / 2.0
 		)
 		Input.action_release("ui_left")
 		Input.action_release("ui_right")
@@ -101,20 +133,28 @@ func _on_touch_dragged(event: InputEvent) -> void:
 
 func _update_joystick(touch_position: Vector2) -> void:
 	var joystick_rect = joystick_base.get_global_rect()
-	_joystick_center = joystick_rect.get_center()
+	var joystick_center = joystick_rect.get_center()
 
 	# Calculate vector from center to touch
-	var touch_offset = touch_position - _joystick_center
+	var touch_offset = touch_position - joystick_center
 	var distance = touch_offset.length()
 
 	# Clamp to max distance
 	if distance > _joystick_max_distance:
 		touch_offset = touch_offset.normalized() * _joystick_max_distance
-		distance = _joystick_max_distance
 
-	# Update handle position (relative to base)
-	var handle_local_pos = touch_offset
-	joystick_handle.position = handle_local_pos
+	# Convert offset to position within handle
+	var base_size = joystick_base.size
+	var handle_size = joystick_handle.size
+	var offset_percent = touch_offset / (base_size / 2.0)
+	offset_percent = offset_percent.clamp(Vector2(-1, -1), Vector2(1, 1))
+
+	# Update handle position as offset from center
+	var offset_pixels = offset_percent * ((base_size.x - handle_size.x) / 2.0)
+	joystick_handle.position = Vector2(
+		(base_size.x - handle_size.x) / 2.0 + offset_pixels.x,
+		(base_size.y - handle_size.y) / 2.0 + offset_pixels.y
+	)
 
 	# Determine input based on direction
 	_update_movement_input(touch_offset)
