@@ -126,9 +126,17 @@ func _remove_player(id: int) -> void:
 
 
 func _spawn_all_peers() -> void:
-	_add_player(1)
+	print("Client spawning peers. Server ID: 1, Connected peers: ", multiplayer.get_peers())
+
+	# Always spawn server first
+	if not has_node("1"):
+		print("Spawning server player (ID 1)")
+		_add_player(1)
+
+	# Then spawn all connected peers
 	for id in multiplayer.get_peers():
 		if not has_node(str(id)):
+			print("Spawning peer: ", id)
 			_add_player(id)
 
 
@@ -141,7 +149,14 @@ func _on_kill_zone_body_entered(body: Node2D) -> void:
 
 func _display_room_code() -> void:
 	var room_code = MultiplayerManager.room_code
+	print("Room code to display: '", room_code, "'")
+
+	await get_tree().create_timer(0.2).timeout
+	room_code = MultiplayerManager.room_code
+	print("Room code after wait: '", room_code, "'")
+
 	if room_code.is_empty():
+		print("WARNING: Room code is empty!")
 		return
 
 	var ui_layer = CanvasLayer.new()
@@ -154,6 +169,10 @@ func _display_room_code() -> void:
 	label.anchor_top = 0
 	label.offset_left = 20
 	label.offset_top = 20
-	label.add_theme_font_size_override("font_size", 24)
-	label.add_theme_color_override("font_color", Color(0.95, 0.9, 0.85, 1))
+	label.add_theme_font_size_override("font_size", 28)
+	label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.2, 1))
+	label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.8))
+	label.add_theme_constant_override("shadow_offset_x", 2)
+	label.add_theme_constant_override("shadow_offset_y", 2)
 	ui_layer.add_child(label)
+	print("Room code label created: ", room_code)
