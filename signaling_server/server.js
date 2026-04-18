@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 
-const wss = new WebSocket.Server({ port: 9080 });
+const PORT = process.env.PORT || 8080;
+const wss = new WebSocket.Server({ port: PORT });
 const rooms = {};
 const peers = new Map();
 
@@ -168,4 +169,4 @@ function handleDisconnect(peerInfo) {
 	}
 }
 
-console.log('WebRTC Signaling Server listening on ws://localhost:9080');
+console.log(`WebRTC Signaling Server listening on port ${PORT}`);

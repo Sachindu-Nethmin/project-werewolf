@@ -15,7 +15,7 @@ enum State {
 }
 
 const STUN_SERVER = "stun:stun.l.google.com:19302"
-var signaling_server_url := "ws://localhost:9080"
+var signaling_server_url := "wss://project-werewolf-signaling.fly.dev:443"
 
 var peer: WebRTCMultiplayerPeer = WebRTCMultiplayerPeer.new()
 var _ws: WebSocketPeer = null
@@ -99,8 +99,8 @@ func _handle_signal_message(msg: Dictionary) -> void:
 			if _rtc_peers.has(from_id):
 				var media = candidate.get("media", "")
 				var index = candidate.get("index", 0)
-				var name = candidate.get("name", "")
-				_rtc_peers[from_id].add_ice_candidate(media, index, name)
+				var candidate_name = candidate.get("name", "")
+				_rtc_peers[from_id].add_ice_candidate(media, index, candidate_name)
 			else:
 				if not _pending_ice.has(from_id):
 					_pending_ice[from_id] = []
@@ -134,8 +134,8 @@ func _create_rtc_connection(peer_id: int, is_offerer: bool) -> void:
 		for candidate in _pending_ice[peer_id]:
 			var media = candidate.get("media", "")
 			var index = candidate.get("index", 0)
-			var name = candidate.get("name", "")
-			conn.add_ice_candidate(media, index, name)
+			var candidate_name = candidate.get("name", "")
+			conn.add_ice_candidate(media, index, candidate_name)
 		_pending_ice.erase(peer_id)
 
 
@@ -153,7 +153,7 @@ func _on_sdp_created(peer_id: int, conn: WebRTCPeerConnection, type: String, sdp
 	_ws.send_text(JSON.stringify(msg))
 
 
-func _on_ice_created(peer_id: int, media: String, index: int, name: String) -> void:
+func _on_ice_created(peer_id: int, media: String, index: int, candidate_name: String) -> void:
 	if _ws == null or _ws.get_ready_state() != WebSocketPeer.STATE_OPEN:
 		return
 
@@ -163,7 +163,7 @@ func _on_ice_created(peer_id: int, media: String, index: int, name: String) -> v
 		"candidate": {
 			"media": media,
 			"index": index,
-			"name": name
+			"name": candidate_name
 		}
 	}
 	_ws.send_text(JSON.stringify(msg))
@@ -214,10 +214,7 @@ func _connect_to_signaling() -> void:
 		return
 
 	print("Connecting to signaling server at ", signaling_server_url)
-
-	if not _ws.is_connected_to_host():
-		await get_tree().process_frame
-
+	await get_tree().process_frame
 	_send_handshake()
 
 
