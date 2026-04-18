@@ -16,12 +16,23 @@ var spawn_point: Vector2
 var _walk_timer := 0.0
 var _tick := 0
 var _input_buffer: Array[Dictionary] = []
+func _enter_tree() -> void:
+	if name.is_valid_int():
+		set_multiplayer_authority(name.to_int())
 
 
 func _ready() -> void:
 	spawn_point = global_position
-	if not is_multiplayer_authority():
-		$Camera2D.enabled = false
+	
+	# Only enable camera and input for the local player
+	if multiplayer.has_multiplayer_peer():
+		if not is_multiplayer_authority():
+			$Camera2D.enabled = false
+			set_physics_process(false)
+			set_process_input(false)
+		else:
+			$Camera2D.make_current()
+			$Camera2D.reset_smoothing()
 
 
 func _physics_process(delta: float) -> void:
@@ -46,6 +57,8 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_update_sprite(direction, delta)
 
+	_sync_position.rpc(global_position, velocity)
+	
 	if not multiplayer.is_server():
 		_report_state.rpc_id(1, global_position, velocity, _tick - 1)
 
@@ -75,6 +88,17 @@ func _report_state(pos: Vector2, vel: Vector2, tick: int) -> void:
 
 	if vel.length_squared() > MAX_SPEED_SQ:
 		_force_correction.rpc_id(sender, spawn_point, Vector2.ZERO)
+	else:
+		global_position = pos
+		velocity = vel
+
+
+@rpc("authority", "unreliable_ordered")
+func _sync_position(pos: Vector2, vel: Vector2) -> void:
+	if is_multiplayer_authority():
+		return
+	global_position = pos
+	velocity = vel
 
 
 @rpc("any_peer", "unreliable_ordered")
@@ -94,3 +118,11 @@ func respawn() -> void:
 	elif is_multiplayer_authority():
 		global_position = spawn_point
 		velocity = Vector2.ZERO
+
+
+@rpc("any_peer", "call_local", "reliable")
+func setup_spawn(pos: Vector2) -> void:
+	global_position = pos
+	spawn_point = pos
+	velocity = Vector2.ZERO
+	_input_buffer.clear()

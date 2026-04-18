@@ -118,10 +118,10 @@ func _on_host_pressed() -> void:
 	host_button.disabled = true
 	join_button.disabled = true
 	room_code_input.visible = false
-	status_label.text = "Creating room..."
-	MultiplayerManager.host_game()
-	# Immediately transition to game after hosting
-	await get_tree().create_timer(0.5).timeout
+	status_label.text = "Loading game..."
+	
+	MultiplayerManager.is_hosting_intent = true
+	MultiplayerManager.join_intent_code = ""
 	_on_connected_to_game()
 
 
@@ -147,9 +147,12 @@ func _attempt_join(code: String) -> void:
 	host_button.disabled = true
 	join_button.disabled = true
 	room_code_input.editable = false
-	status_label.text = "Connecting to " + code + "..."
-	print("Attempting to join room: ", code)
-	MultiplayerManager.join_game(code)
+	status_label.text = "Loading game..."
+	print("Preparing to join room: ", code)
+	
+	MultiplayerManager.is_hosting_intent = false
+	MultiplayerManager.join_intent_code = code
+	_on_connected_to_game()
 
 
 func _on_room_code_ready(code: String) -> void:

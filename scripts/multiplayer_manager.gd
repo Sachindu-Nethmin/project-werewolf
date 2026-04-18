@@ -15,7 +15,7 @@ enum State {
 }
 
 const STUN_SERVER = "stun:stun.l.google.com:19302"
-var signaling_server_url := "ws://project-werewolf-signaling.fly.dev"
+var signaling_server_url := "ws://localhost:8090"
 
 var peer: WebRTCMultiplayerPeer = WebRTCMultiplayerPeer.new()
 var _ws: WebSocketPeer = null
@@ -24,6 +24,10 @@ var _is_host: bool = false
 var _room_code: String = ""
 var _rtc_peers: Dictionary = {}  # peer_id -> WebRTCPeerConnection
 var _pending_ice: Dictionary = {}  # peer_id -> [candidates]
+
+# Pass connection intent from MainMenu to Level Script
+var is_hosting_intent: bool = false
+var join_intent_code: String = ""
 
 var room_code: String:
 	get:
@@ -50,9 +54,11 @@ func _process(_delta: float) -> void:
 		WebSocketPeer.STATE_OPEN:
 			_process_messages()
 		WebSocketPeer.STATE_CLOSED:
-			if _state != State.IDLE:
+			var was_active = _state != State.IDLE
+			_ws = null
+			_state = State.IDLE
+			if was_active:
 				connection_failed.emit("Signaling server disconnected")
-				_state = State.IDLE
 
 
 func _process_messages() -> void:
@@ -77,33 +83,44 @@ func _handle_signal_message(msg: Dictionary) -> void:
 			room_code_ready.emit(_room_code)
 
 		"peer_id":
-			var my_id = msg.get("id", 0)
-			print("Assigned peer ID: ", my_id)
-			_state = State.GAME_READY
-			connected_to_game.emit()
+			var my_id = int(msg.get("id", 0))
+			print("Assigned peer ID: ", my_id, " (waiting for WebRTC to connect...)")
+			# Don't emit connected_to_game here - wait for actual WebRTC connection
+			# via multiplayer.connected_to_server → _on_connected_to_server
 
 		"new_peer":
-			var peer_id = msg.get("id", 0)
+			var peer_id = int(msg.get("id", 0))
+			print("Received new_peer: ", peer_id, " (is_host=", _is_host, ")")
 			if _is_host:
+				print("Creating RTC connection for peer: ", peer_id)
 				_create_rtc_connection(peer_id, true)
+			else:
+				print("WARNING: Got new_peer but not host!")
 
 		"offer":
-			var from_id = msg.get("from", 0)
+			var from_id = int(msg.get("from", 0))
 			var sdp = msg.get("sdp", "")
+			print("Received offer from peer ", from_id, " (is_host=", _is_host, ")")
 			if not _is_host:
+				print("Creating RTC connection for offerer...")
 				_create_rtc_connection(from_id, false)
 				if _rtc_peers.has(from_id):
-					_rtc_peers[from_id].set_remote_description("offer", sdp)
-					_rtc_peers[from_id].create_answer()
+					print("Setting remote description (offer)...")
+					var err = _rtc_peers[from_id].set_remote_description("offer", sdp)
+					print("Set remote description result: ", err)
+				else:
+					print("ERROR: RTC peer not found after creation!")
+			else:
+				print("Got offer but I'm the host, ignoring")
 
 		"answer":
-			var from_id = msg.get("from", 0)
+			var from_id = int(msg.get("from", 0))
 			var sdp = msg.get("sdp", "")
 			if _is_host and _rtc_peers.has(from_id):
 				_rtc_peers[from_id].set_remote_description("answer", sdp)
 
 		"ice":
-			var from_id = msg.get("from", 0)
+			var from_id = int(msg.get("from", 0))
 			var candidate = msg.get("candidate", {})
 			if _rtc_peers.has(from_id):
 				var media = candidate.get("media", "")
@@ -123,21 +140,32 @@ func _handle_signal_message(msg: Dictionary) -> void:
 
 func _create_rtc_connection(peer_id: int, is_offerer: bool) -> void:
 	if _rtc_peers.has(peer_id):
+		print("RTC peer ", peer_id, " already exists, skipping")
 		return
 
+	print("Creating WebRTC connection for peer ", peer_id, " (offerer=", is_offerer, ")")
 	var conn = WebRTCPeerConnection.new()
-	conn.initialize({
-		"iceServers": [{"urls": ["stun:" + STUN_SERVER]}]
+	print("WebRTCPeerConnection created, initializing...")
+	var init_err = conn.initialize({
+		"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
 	})
+	print("Initialize returned: ", init_err)
+	if init_err != OK:
+		push_error("WebRTC init failed: ", init_err, " — install webrtc-native plugin from https://github.com/godotengine/webrtc-native/releases")
+		return
 
-	conn.session_description_created.connect(_on_sdp_created.bind(peer_id, conn))
-	conn.ice_candidate_created.connect(_on_ice_created.bind(peer_id))
+	print("Connecting signals for peer ", peer_id)
+	conn.session_description_created.connect(func(type: String, sdp: String): _on_sdp_created(peer_id, conn, type, sdp))
+	conn.ice_candidate_created.connect(func(media: String, index: int, candidate_name: String): _on_ice_created(peer_id, media, index, candidate_name))
 
 	_rtc_peers[peer_id] = conn
+	print("Adding peer to multiplayer: ", peer_id)
 	peer.add_peer(conn, peer_id)
 
 	if is_offerer:
+		print("Creating offer for peer ", peer_id)
 		conn.create_offer()
+	print("RTC connection setup complete for peer ", peer_id)
 
 	if _pending_ice.has(peer_id):
 		for candidate in _pending_ice[peer_id]:
@@ -149,9 +177,12 @@ func _create_rtc_connection(peer_id: int, is_offerer: bool) -> void:
 
 
 func _on_sdp_created(peer_id: int, conn: WebRTCPeerConnection, type: String, sdp: String) -> void:
+	print("SDP created for peer ", peer_id, " type=", type, " sdp_len=", sdp.length())
 	conn.set_local_description(type, sdp)
+	print("Local description set")
 
 	if _ws == null or _ws.get_ready_state() != WebSocketPeer.STATE_OPEN:
+		print("WARNING: WebSocket not open, cannot send ", type)
 		return
 
 	var msg = {
@@ -159,11 +190,15 @@ func _on_sdp_created(peer_id: int, conn: WebRTCPeerConnection, type: String, sdp
 		"to": peer_id,
 		"sdp": sdp
 	}
+	print("Sending ", type, " to peer ", peer_id, " via signaling server")
 	_ws.send_text(JSON.stringify(msg))
+	print("Sent ", type)
 
 
 func _on_ice_created(peer_id: int, media: String, index: int, candidate_name: String) -> void:
+	print("ICE candidate created for peer ", peer_id, ": ", candidate_name)
 	if _ws == null or _ws.get_ready_state() != WebSocketPeer.STATE_OPEN:
+		print("WARNING: WebSocket not open, buffering ICE candidate")
 		return
 
 	var msg = {
@@ -175,6 +210,7 @@ func _on_ice_created(peer_id: int, media: String, index: int, candidate_name: St
 			"name": candidate_name
 		}
 	}
+	print("Sending ICE candidate to peer ", peer_id)
 	_ws.send_text(JSON.stringify(msg))
 
 
@@ -228,6 +264,8 @@ func _connect_to_signaling() -> void:
 
 	print("Connecting to signaling server at ", signaling_server_url)
 	await _wait_for_websocket_open()
+	if _ws == null or _ws.get_ready_state() != WebSocketPeer.STATE_OPEN:
+		return
 	_send_handshake()
 
 

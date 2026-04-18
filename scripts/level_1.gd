@@ -56,21 +56,24 @@ func _ready() -> void:
 	kill_zone.body_entered.connect(_on_kill_zone_body_entered)
 
 	_build_level()
-	_display_room_code()
+	MultiplayerManager.connection_failed.connect(_on_connection_failed)
 
-	# Multiplayer spawning logic
-	if multiplayer.is_server():
+	# Read intent and establish network AFTER the scene is fully loaded
+	if MultiplayerManager.is_hosting_intent:
+		MultiplayerManager.room_code_ready.connect(_on_room_code_ready)
 		multiplayer.peer_connected.connect(_add_player)
 		multiplayer.peer_disconnected.connect(_remove_player)
+		_add_player(1) # Host spawns immediately
+		MultiplayerManager.host_game()
+	elif MultiplayerManager.join_intent_code != "":
+		_display_room_code(MultiplayerManager.join_intent_code)
+		MultiplayerManager.join_game(MultiplayerManager.join_intent_code)
 
-		for id in multiplayer.get_peers():
-			_add_player(id)
+func _on_room_code_ready(code: String) -> void:
+	_display_room_code(code)
 
-		_add_player(1)
-	else:
-		# Client waits for server to spawn players
-		await get_tree().create_timer(0.1).timeout
-		_spawn_all_peers()
+func _on_connection_failed(_reason: String) -> void:
+	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 
 var _spawn_points := [
@@ -80,35 +83,30 @@ var _spawn_points := [
 var _spawn_index := 0
 
 
+
+
+
 func _add_player(id: int) -> void:
-	print("Spawning player for: ", id)
+	if not multiplayer.is_server():
+		return
+	if has_node(str(id)):
+		return
+
+	print("Spawning player with name '", id, "'")
 	var player = preload("res://scenes/player.tscn").instantiate()
 	player.name = str(id)
+	player.set_multiplayer_authority(id)
 	player.position = _spawn_points[_spawn_index % _spawn_points.size()]
 	_spawn_index += 1
 	add_child(player)
-	player.set_multiplayer_authority(id)
+	player.setup_spawn.rpc(player.position)
 
 
 func _remove_player(id: int) -> void:
+	if not multiplayer.is_server():
+		return
 	if has_node(str(id)):
 		get_node(str(id)).queue_free()
-
-
-func _spawn_all_peers() -> void:
-	# Client spawns players for all connected peers
-	print("Client spawning peers. Server ID: 1, Connected peers: ", multiplayer.get_peers())
-
-	# Always spawn server first
-	if not has_node("1"):
-		print("Spawning server player (ID 1)")
-		_add_player(1)
-
-	# Then spawn all connected peers
-	for id in multiplayer.get_peers():
-		if not has_node(str(id)):
-			print("Spawning peer: ", id)
-			_add_player(id)
 
 
 # ─── Level builder ────────────────────────────────────────────────────────────
@@ -149,14 +147,13 @@ func _on_kill_zone_body_entered(body: Node2D) -> void:
 		body.respawn()
 
 
-func _display_room_code() -> void:
-	var room_code = MultiplayerManager.room_code
-	print("Room code to display: '", room_code, "'")
+func _display_room_code(custom_code: String = "") -> void:
+	var room_code = custom_code
 
-	# Wait a moment to ensure room code is set
-	await get_tree().create_timer(0.2).timeout
-	room_code = MultiplayerManager.room_code
-	print("Room code after wait: '", room_code, "'")
+	if room_code.is_empty():
+		room_code = MultiplayerManager.room_code
+		
+	print("Room code to display: '", room_code, "'")
 
 	if room_code.is_empty():
 		print("WARNING: Room code is empty!")
