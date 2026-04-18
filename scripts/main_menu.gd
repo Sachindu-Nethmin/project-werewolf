@@ -38,6 +38,7 @@ func _ready() -> void:
 	host_button.pressed.connect(_on_host_pressed)
 	join_button.pressed.connect(_on_join_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
+	room_code_input.text_submitted.connect(_on_room_code_submitted)
 
 	MultiplayerManager.room_code_ready.connect(_on_room_code_ready)
 	MultiplayerManager.connection_failed.connect(_on_connection_failed)
@@ -102,19 +103,30 @@ func _on_host_pressed() -> void:
 
 func _on_join_pressed() -> void:
 	var code := room_code_input.text.strip_edges().to_upper()
+	_attempt_join(code)
+
+
+func _on_room_code_submitted(new_text: String) -> void:
+	var code := new_text.strip_edges().to_upper()
+	_attempt_join(code)
+
+
+func _attempt_join(code: String) -> void:
 	if code.length() < 4:
 		status_label.text = "Room code too short"
 		return
+	if host_button.disabled:
+		return
 	host_button.disabled = true
 	join_button.disabled = true
-	status_label.text = "Connecting..."
+	status_label.text = "Connecting to " + code + "..."
 	MultiplayerManager.join_game(code)
 
 
 func _on_room_code_ready(code: String) -> void:
-	status_label.text = "Room Code: " + code
+	status_label.text = "Room: " + code + " - Waiting for players..."
 	room_code_input.visible = false
-	get_tree().change_scene_to_file("res://scenes/level_1.tscn")
+	print("Host room created with code: ", code)
 
 
 func _on_connected_to_game() -> void:

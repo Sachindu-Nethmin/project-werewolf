@@ -66,6 +66,10 @@ func _ready() -> void:
 			_add_player(id)
 
 		_add_player(1)
+	else:
+		# Client waits for server to spawn players
+		await get_tree().create_timer(0.1).timeout
+		_spawn_all_peers()
 
 
 var _spawn_points := [Vector2(192, -80), Vector2(512, -80), Vector2(832, -80), Vector2(1152, -80)]
@@ -85,6 +89,14 @@ func _add_player(id: int) -> void:
 func _remove_player(id: int) -> void:
 	if has_node(str(id)):
 		get_node(str(id)).queue_free()
+
+
+func _spawn_all_peers() -> void:
+	# Client spawns players for all connected peers
+	var all_peers = [1] + multiplayer.get_peers()
+	for id in all_peers:
+		if not has_node(str(id)):
+			_add_player(id)
 
 
 # ─── Level builder ────────────────────────────────────────────────────────────
