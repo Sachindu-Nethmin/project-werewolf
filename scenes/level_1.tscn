@@ -165,27 +165,8 @@ position = Vector2(3840, 256)
 position = Vector2(0, 26)
 shape = SubResource("KillZoneShape")
 
-[node name="Player" type="CharacterBody2D" parent="." unique_id=820041109]
-position = Vector2(192, -80)
-script = ExtResource("2_player")
-
-[node name="Sprite2D" type="Sprite2D" parent="Player" unique_id=45859714]
-scale = Vector2(0.9, 0.9)
-texture = ExtResource("3_hermit")
-offset = Vector2(0, -22)
-hframes = 4
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Player" unique_id=749508866]
-position = Vector2(-5, -14.5)
-shape = SubResource("PlayerShape")
-
-[node name="Camera2D" type="Camera2D" parent="Player" unique_id=763743699]
-offset = Vector2(0, -180)
-zoom = Vector2(0.85, 0.85)
-limit_left = 0
-limit_top = -700
-limit_right = 7680
-limit_bottom = 200
-position_smoothing_enabled = true
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+_spawnable_scenes = PackedStringArray("res://scenes/player.tscn")
+spawn_path = NodePath("..")
 
 [node name="MobileControls" parent="." instance=ExtResource("4_mobile")]

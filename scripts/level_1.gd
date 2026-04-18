@@ -57,6 +57,35 @@ func _ready() -> void:
 
 	_build_level()
 
+	# Multiplayer spawning logic
+	if multiplayer.is_server():
+		multiplayer.peer_connected.connect(_add_player)
+		multiplayer.peer_disconnected.connect(_remove_player)
+
+		for id in multiplayer.get_peers():
+			_add_player(id)
+
+		_add_player(1)
+
+
+var _spawn_points := [Vector2(192, -80), Vector2(512, -80), Vector2(832, -80), Vector2(1152, -80)]
+var _spawn_index := 0
+
+
+func _add_player(id: int) -> void:
+	print("Spawning player for: ", id)
+	var player = preload("res://scenes/player.tscn").instantiate()
+	player.name = str(id)
+	player.position = _spawn_points[_spawn_index % _spawn_points.size()]
+	_spawn_index += 1
+	add_child(player)
+	player.set_multiplayer_authority(id)
+
+
+func _remove_player(id: int) -> void:
+	if has_node(str(id)):
+		get_node(str(id)).queue_free()
+
 
 # ─── Level builder ────────────────────────────────────────────────────────────
 func _build_level() -> void:
@@ -90,5 +119,7 @@ func _spawn_tile(col: int, row: int, tile_type: int) -> void:
 
 
 func _on_kill_zone_body_entered(body: Node2D) -> void:
+	if not multiplayer.is_server():
+		return
 	if body.has_method("respawn"):
 		body.respawn()

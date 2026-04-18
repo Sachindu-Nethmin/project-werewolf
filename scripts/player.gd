@@ -4,35 +4,50 @@ const SPEED         := 220.0
 const JUMP_VELOCITY := -520.0
 const GRAVITY       := 980.0
 
-# Walk animation: 4 frames at this interval
 const WALK_FPS  := 8.0
+
+const MAX_SPEED_SQ := (SPEED * 1.5) * (SPEED * 1.5)
+const INPUT_BUFFER_SIZE := 64
 
 var spawn_point: Vector2
 
 @onready var _sprite: Sprite2D = $Sprite2D
 
 var _walk_timer := 0.0
+var _tick := 0
+var _input_buffer: Array[Dictionary] = []
 
 
 func _ready() -> void:
 	spawn_point = global_position
+	if not is_multiplayer_authority():
+		$Camera2D.enabled = false
 
 
 func _physics_process(delta: float) -> void:
-	# Gravity
+	if not is_multiplayer_authority():
+		return
+
 	if not is_on_floor():
 		velocity.y += GRAVITY * delta
 
-	# Jump
 	if Input.is_action_just_pressed("ui_accept") and is_on_floor():
 		velocity.y = JUMP_VELOCITY
 
-	# Horizontal movement
 	var direction := Input.get_axis("ui_left", "ui_right")
 	velocity.x = direction * SPEED
 
+	var input_frame = {"tick": _tick, "dir": direction, "jump": Input.is_action_just_pressed("ui_accept"), "delta": delta}
+	_tick += 1
+	_input_buffer.append(input_frame)
+	if _input_buffer.size() > INPUT_BUFFER_SIZE:
+		_input_buffer.pop_front()
+
 	move_and_slide()
 	_update_sprite(direction, delta)
+
+	if not multiplayer.is_server():
+		_report_state.rpc_id(1, global_position, velocity, _tick - 1)
 
 
 func _update_sprite(direction: float, delta: float) -> void:
@@ -50,7 +65,32 @@ func _update_sprite(direction: float, delta: float) -> void:
 		_walk_timer  = 0.0
 
 
-# Called by the kill zone when the player falls off the map.
+@rpc("any_peer", "unreliable_ordered")
+func _report_state(pos: Vector2, vel: Vector2, tick: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender = multiplayer.get_remote_sender_id()
+	if sender != int(name):
+		return
+
+	if vel.length_squared() > MAX_SPEED_SQ:
+		_force_correction.rpc_id(sender, spawn_point, Vector2.ZERO)
+
+
+@rpc("any_peer", "unreliable_ordered")
+func _force_correction(corrected_pos: Vector2, corrected_vel: Vector2) -> void:
+	if not is_multiplayer_authority():
+		return
+	global_position = corrected_pos
+	velocity = corrected_vel
+	_input_buffer.clear()
+
+
 func respawn() -> void:
-	global_position = spawn_point
-	velocity        = Vector2.ZERO
+	if multiplayer.is_server():
+		global_position = spawn_point
+		velocity = Vector2.ZERO
+		_force_correction.rpc_id(int(name), spawn_point, Vector2.ZERO)
+	elif is_multiplayer_authority():
+		global_position = spawn_point
+		velocity = Vector2.ZERO
