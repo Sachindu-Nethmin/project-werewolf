@@ -214,8 +214,20 @@ func _on_ice_created(peer_id: int, media: String, index: int, candidate_name: St
 	_ws.send_text(JSON.stringify(msg))
 
 
+func _reset_state() -> void:
+	if _ws != null:
+		_ws.close()
+		_ws = null
+	_rtc_peers.clear()
+	_pending_ice.clear()
+	multiplayer.multiplayer_peer = null
+	peer = WebRTCMultiplayerPeer.new()
+	_state = State.IDLE
+
+
 func host_game() -> void:
 	print("Hosting game...")
+	_reset_state()
 	_is_host = true
 
 	var error = peer.create_server()
@@ -235,6 +247,7 @@ func join_game(room_code: String) -> void:
 		connection_failed.emit("Invalid room code format")
 		return
 
+	_reset_state()
 	_is_host = false
 	_room_code = room_code
 

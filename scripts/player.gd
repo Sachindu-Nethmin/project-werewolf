@@ -86,11 +86,8 @@ func _report_state(pos: Vector2, vel: Vector2, tick: int) -> void:
 	if sender != int(name):
 		return
 
-	if vel.length_squared() > MAX_SPEED_SQ:
-		_force_correction.rpc_id(sender, spawn_point, Vector2.ZERO)
-	else:
-		global_position = pos
-		velocity = vel
+	global_position = pos
+	velocity = vel
 
 
 @rpc("authority", "unreliable_ordered")
