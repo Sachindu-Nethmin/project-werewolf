@@ -51,7 +51,7 @@ func _process(_delta: float) -> void:
 
 func _process_messages() -> void:
 	while _ws.get_available_packet_count() > 0:
-		var data = _ws.get_message()
+		var data = _ws.get_packet()
 		if data == null:
 			continue
 
