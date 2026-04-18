@@ -162,7 +162,12 @@ func _on_connected_to_game() -> void:
 
 
 func _on_connection_failed(reason: String) -> void:
-	status_label.text = "Failed: " + reason
+	status_label.text = "Error: " + reason
+	print("Connection failed: ", reason)
+	# Re-enable buttons after a short delay so user can try again
+	await get_tree().create_timer(1.0).timeout
+	if not host_button.disabled:
+		return
 	host_button.disabled = false
 	join_button.disabled = false
 

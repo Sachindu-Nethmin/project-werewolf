@@ -228,12 +228,23 @@ func _connect_to_signaling() -> void:
 func _wait_for_websocket_open() -> void:
 	var timeout = 0
 	var max_frames = 300
+	var last_state = -1
 	while timeout < max_frames:
 		await get_tree().process_frame
 		if _ws != null:
 			var state = _ws.get_ready_state()
+			# Log state changes
+			if state != last_state:
+				var state_names = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"]
+				print("WebSocket state: ", state_names[state] if state < 4 else "UNKNOWN")
+				last_state = state
+
 			if state == WebSocketPeer.STATE_OPEN:
 				print("WebSocket connected (STATE_OPEN)")
+				return
+			if state == WebSocketPeer.STATE_CLOSED:
+				print("WebSocket closed unexpectedly")
+				connection_failed.emit("Connection lost to signaling server")
 				return
 			if state != WebSocketPeer.STATE_CLOSED:
 				timeout += 1
@@ -241,7 +252,8 @@ func _wait_for_websocket_open() -> void:
 				print("Waiting for WebSocket (attempt ", int(timeout / 60), ")")
 		else:
 			return
-	print("WebSocket connection timeout after ", max_frames, " frames")
+	print("WebSocket connection timeout - server unreachable")
+	connection_failed.emit("Signaling server unreachable (timeout). Check internet connection.")
 
 
 func _send_handshake() -> void:
