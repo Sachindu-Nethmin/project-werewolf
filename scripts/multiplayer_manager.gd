@@ -15,7 +15,7 @@ enum State {
 }
 
 const STUN_SERVER = "stun:stun.l.google.com:19302"
-var signaling_server_url := "wss://old-dawn-1161.fly.dev"
+var signaling_server_url := "ws://project-werewolf-signaling.fly.dev"
 
 var peer: WebRTCMultiplayerPeer = WebRTCMultiplayerPeer.new()
 var _ws: WebSocketPeer = null
@@ -214,14 +214,24 @@ func _connect_to_signaling() -> void:
 		return
 
 	print("Connecting to signaling server at ", signaling_server_url)
-	await get_tree().process_frame
+	await _wait_for_websocket_open()
 	_send_handshake()
 
 
-func _send_handshake() -> void:
-	await get_tree().process_frame
+func _wait_for_websocket_open() -> void:
+	var timeout = 0
+	while timeout < 50:
+		await get_tree().process_frame
+		if _ws != null and _ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
+			print("WebSocket connected")
+			return
+		timeout += 1
+	print("WebSocket connection timeout")
 
+
+func _send_handshake() -> void:
 	if _ws == null or _ws.get_ready_state() != WebSocketPeer.STATE_OPEN:
+		print("WebSocket not open, aborting handshake")
 		return
 
 	var msg: Dictionary

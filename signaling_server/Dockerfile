@@ -7,6 +7,6 @@ RUN npm install --production
 
 COPY server.js .
 
-EXPOSE 9080
+EXPOSE 8080
 
 CMD ["npm", "start"]
